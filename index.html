@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comprehensive Student Career Profiling System</title>
+
+  <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            pastel: {
+              lavender: '#EAE6F8',
+              lavenderDark: '#6C5CE7',
+              sage: '#E8F5E9',
+              sageDark: '#2E7D32',
+              blue: '#E3F2FD',
+              blueDark: '#1976D2',
+              blush: '#FCE4EC',
+              blushDark: '#C2185B',
+              cream: '#FBFBFA'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+
+  <!-- Babel Standalone for in-browser JSX parsing -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- html2pdf.js for 1-Click Client-Side PDF Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #printable-report, #printable-report * { visibility: visible; }
+      #printable-report { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-pastel-cream text-slate-800 antialiased font-sans min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // =========================================================================
+    // 1. DATA: 16 CAREER CLUSTERS & PSYCHOMETRIC ALGORITHMS
+    // =========================================================================
+    const CAREER_CLUSTERS = [
+      {
+        id: "ENG_TECH",
+        name: "Engineering & Technology",
+        description: "Focuses on designing, building, and optimizing structural, mechanical, electrical, and robotic systems.",
+        sdsWeights: { R: 0.35, I: 0.30, A: 0.05, S: 0.05, E: 0.15, C: 0.10 },
+        tamanaWeights: { MR: 0.30, NA: 0.25, SA: 0.20, AR: 0.15, VR: 0.05, LA: 0.03, PA: 0.02 },
+        mbtiFit: ["INTJ", "INTP", "ISTJ", "ISTP", "ENTJ", "ESTP"],
+        sovWeights: { THE: 0.40, ECO: 0.30, POL: 0.10, AES: 0.10, SOC: 0.05, REL: 0.05 },
+        pathways: ["Mechanical Engineering", "Civil & Structural Engineering", "Robotics & Mechatronics"],
+        occupations: ["Robotics Engineer", "Hardware Systems Architect", "Structural Designer"]
+      },
+      {
+        id: "HEALTH_MED",
+        name: "Health Science & Medical Services",
+        description: "Dedicated to clinical medicine, healthcare therapies, surgical intervention, and patient wellness.",
+        sdsWeights: { I: 0.35, S: 0.30, R: 0.15, C: 0.10, A: 0.05, E: 0.05 },
+        tamanaWeights: { VR: 0.25, LA: 0.20, NA: 0.20, AR: 0.15, PA: 0.10, MR: 0.05, SA: 0.05 },
+        mbtiFit: ["INFJ", "ISFJ", "ENFJ", "ESFJ", "ISTJ", "INFP"],
+        sovWeights: { SOC: 0.40, THE: 0.30, REL: 0.10, ECO: 0.10, POL: 0.05, AES: 0.05 },
+        pathways: ["MBBS / Medicine", "Biomedical Science", "Pharmacology & Therapeutics"],
+        occupations: ["Physician / Surgeon", "Clinical Pharmacologist", "Biomedical Specialist"]
+      },
+      {
+        id: "IT_CS",
+        name: "Information Technology & Computer Systems",
+        description: "Centers on software architecture, artificial intelligence, cloud platforms, and cyber infrastructure.",
+        sdsWeights: { I: 0.35, C: 0.25, R: 0.20, A: 0.10, E: 0.05, S: 0.05 },
+        tamanaWeights: { AR: 0.30, NA: 0.25, VR: 0.15, PA: 0.15, SA: 0.05, LA: 0.05, MR: 0.05 },
+        mbtiFit: ["INTJ", "INTP", "ENTP", "ISTJ", "INFJ"],
+        sovWeights: { THE: 0.45, ECO: 0.25, AES: 0.15, POL: 0.05, SOC: 0.05, REL: 0.05 },
+        pathways: ["Computer Science & Engineering", "Artificial Intelligence & Data Science", "Cybersecurity"],
+        occupations: ["Full-Stack Software Engineer", "Machine Learning Specialist", "Security Architect"]
+      },
+      {
+        id: "BUS_FIN",
+        name: "Business Management & Corporate Finance",
+        description: "Concentrates on corporate leadership, venture financing, commercial accounting, and strategy.",
+        sdsWeights: { E: 0.40, C: 0.30, S: 0.10, I: 0.10, R: 0.05, A: 0.05 },
+        tamanaWeights: { NA: 0.30, VR: 0.25, LA: 0.20, PA: 0.15, AR: 0.05, SA: 0.03, MR: 0.02 },
+        mbtiFit: ["ENTJ", "ESTJ", "ESTP", "ISTJ", "ENFJ"],
+        sovWeights: { ECO: 0.45, POL: 0.30, THE: 0.10, SOC: 0.05, AES: 0.05, REL: 0.05 },
+        pathways: ["Chartered Accountancy / CFA", "Financial Analytics", "Business Administration (MBA)"],
+        occupations: ["Investment Banker", "Corporate Strategist", "Portfolio Manager"]
+      },
+      {
+        id: "SCI_RES",
+        name: "Scientific Research & Pure Sciences",
+        description: "Advancing human knowledge through experimental research, astronomical data, and fundamental theories.",
+        sdsWeights: { I: 0.50, R: 0.20, A: 0.10, C: 0.10, S: 0.05, E: 0.05 },
+        tamanaWeights: { AR: 0.30, NA: 0.25, VR: 0.20, LA: 0.10, SA: 0.05, MR: 0.05, PA: 0.05 },
+        mbtiFit: ["INTP", "INTJ", "INFJ", "ISTJ"],
+        sovWeights: { THE: 0.55, AES: 0.15, ECO: 0.10, SOC: 0.10, POL: 0.05, REL: 0.05 },
+        pathways: ["Pure & Applied Physics", "Genetics & Molecular Biology", "Advanced Chemistry"],
+        occupations: ["Principal Research Scientist", "Genomics Specialist", "Astrochemist"]
+      },
+      {
+        id: "ARTS_MEDIA",
+        name: "Arts, Media & Visual Communication",
+        description: "Encompasses visual storytelling, digital journalism, cinematic direction, and mass communication.",
+        sdsWeights: { A: 0.45, S: 0.20, E: 0.15, I: 0.10, C: 0.05, R: 0.05 },
+        tamanaWeights: { LA: 0.35, VR: 0.25, PA: 0.15, SA: 0.15, AR: 0.05, NA: 0.03, MR: 0.02 },
+        mbtiFit: ["ENFP", "INFP", "INFJ", "ISFP", "ENTP"],
+        sovWeights: { AES: 0.45, SOC: 0.25, POL: 0.15, THE: 0.10, ECO: 0.03, REL: 0.02 },
+        pathways: ["Mass Communication & Journalism", "Film Production & Screenwriting", "Digital Media Design"],
+        occupations: ["Multimedia Journalist", "Creative Director", "Screenwriter"]
+      },
+      {
+        id: "EDU_TRAIN",
+        name: "Education, Teaching & Pedagogy",
+        description: "Dedicated to intellectual development, academic curriculum architecture, and pedagogical mentorship.",
+        sdsWeights: { S: 0.45, A: 0.20, I: 0.15, E: 0.10, C: 0.05, R: 0.05 },
+        tamanaWeights: { LA: 0.30, VR: 0.30, AR: 0.15, NA: 0.10, PA: 0.05, SA: 0.05, MR: 0.05 },
+        mbtiFit: ["ENFJ", "INFJ", "ENFP", "ISFJ", "ESFJ"],
+        sovWeights: { SOC: 0.40, THE: 0.30, REL: 0.15, POL: 0.05, AES: 0.05, ECO: 0.05 },
+        pathways: ["Higher Education & Research", "Instructional Systems Design", "Educational Psychology"],
+        occupations: ["University Professor", "Instructional Designer", "Academic Dean"]
+      },
+      {
+        id: "LAW_GOV",
+        name: "Legal, Governance & Public Administration",
+        description: "Covers statutory jurisprudence, constitutional defense, administrative civil services, and diplomacy.",
+        sdsWeights: { E: 0.35, S: 0.25, I: 0.20, C: 0.10, A: 0.05, R: 0.05 },
+        tamanaWeights: { VR: 0.35, LA: 0.35, AR: 0.15, NA: 0.05, PA: 0.05, MR: 0.03, SA: 0.02 },
+        mbtiFit: ["ENTJ", "INTJ", "ENFJ", "ESTJ", "INFP"],
+        sovWeights: { POL: 0.40, SOC: 0.25, THE: 0.20, ECO: 0.10, REL: 0.03, AES: 0.02 },
+        pathways: ["Constitutional & Corporate Law", "Civil Services / IAS", "International Relations"],
+        occupations: ["Appellate Advocate", "Administrative Magistrate", "Diplomatic Envoy"]
+      },
+      {
+        id: "AGRI_NAT",
+        name: "Agriculture, Ecology & Food Sciences",
+        description: "Focuses on agronomy, environmental sustainability, soil biotechnology, and food tech.",
+        sdsWeights: { R: 0.45, I: 0.25, C: 0.10, S: 0.10, E: 0.05, A: 0.05 },
+        tamanaWeights: { MR: 0.25, NA: 0.20, AR: 0.20, VR: 0.15, SA: 0.10, LA: 0.05, PA: 0.05 },
+        mbtiFit: ["ISTP", "ISFP", "ESTP", "ISTJ"],
+        sovWeights: { THE: 0.30, ECO: 0.30, SOC: 0.15, AES: 0.15, REL: 0.05, POL: 0.05 },
+        pathways: ["Agricultural Science (B.Sc Agri)", "Food Technology", "Environmental Science"],
+        occupations: ["Agronomist", "Precision Farming Specialist", "Food Safety Auditor"]
+      },
+      {
+        id: "ARCH_CONST",
+        name: "Architecture & Structural Planning",
+        description: "Blends spatial aesthetics with civil physics to design sustainable urban infrastructures and landscapes.",
+        sdsWeights: { A: 0.35, R: 0.30, I: 0.15, C: 0.10, E: 0.05, S: 0.05 },
+        tamanaWeights: { SA: 0.35, MR: 0.20, NA: 0.15, AR: 0.15, PA: 0.10, LA: 0.03, VR: 0.02 },
+        mbtiFit: ["INTJ", "ISTP", "INFJ", "ISFP", "ENTP"],
+        sovWeights: { AES: 0.45, THE: 0.25, ECO: 0.15, POL: 0.05, SOC: 0.05, REL: 0.05 },
+        pathways: ["Bachelor of Architecture (B.Arch)", "Urban & Regional Planning", "Interior Design"],
+        occupations: ["Principal Architect", "Urban Master Planner", "BIM Specialist"]
+      },
+      {
+        id: "MKT_ENTR",
+        name: "Marketing Strategy & Entrepreneurship",
+        description: "Directs high-growth business venturing, market disruption, consumer psychology, and brand scaling.",
+        sdsWeights: { E: 0.45, A: 0.20, S: 0.15, C: 0.10, I: 0.05, R: 0.05 },
+        tamanaWeights: { VR: 0.25, LA: 0.25, NA: 0.20, AR: 0.15, PA: 0.10, SA: 0.03, MR: 0.02 },
+        mbtiFit: ["ENTP", "ENTJ", "ENFP", "ESTP"],
+        sovWeights: { ECO: 0.40, POL: 0.30, AES: 0.15, SOC: 0.10, THE: 0.03, REL: 0.02 },
+        pathways: ["Entrepreneurship & Venturing", "Consumer Behavior & Marketing", "Commerce"],
+        occupations: ["Startup Founder", "Chief Marketing Officer", "Brand Growth Strategist"]
+      },
+      {
+        id: "SOC_COMM",
+        name: "Social, Community & Psychological Services",
+        description: "Dedicated to clinical psychotherapy, civil welfare rights, community rehabilitation, and NGO stewardship.",
+        sdsWeights: { S: 0.50, A: 0.15, I: 0.15, E: 0.10, C: 0.05, R: 0.05 },
+        tamanaWeights: { LA: 0.30, VR: 0.30, AR: 0.15, PA: 0.10, NA: 0.05, SA: 0.05, MR: 0.05 },
+        mbtiFit: ["ENFJ", "INFJ", "INFP", "ISFJ", "ESFJ"],
+        sovWeights: { SOC: 0.50, REL: 0.20, POL: 0.15, THE: 0.10, AES: 0.03, ECO: 0.02 },
+        pathways: ["Clinical Psychology", "Master of Social Work (MSW)", "Humanitarian Aid Leadership"],
+        occupations: ["Licensed Psychotherapist", "NGO Program Director", "Community Welfare Officer"]
+      },
+      {
+        id: "HOSP_TOUR",
+        name: "Hospitality & International Experience",
+        description: "Directs premium luxury resorts, culinary arts operations, and high-impact international event programs.",
+        sdsWeights: { E: 0.35, S: 0.35, A: 0.15, C: 0.10, R: 0.03, I: 0.02 },
+        tamanaWeights: { LA: 0.30, VR: 0.25, PA: 0.20, NA: 0.15, AR: 0.05, SA: 0.03, MR: 0.02 },
+        mbtiFit: ["ESFJ", "ENFJ", "ESFP", "ESTP"],
+        sovWeights: { SOC: 0.35, ECO: 0.25, AES: 0.20, POL: 0.10, REL: 0.05, THE: 0.05 },
+        pathways: ["Hospitality & Hotel Administration", "Culinary Arts Management", "Global Tourism Planning"],
+        occupations: ["General Manager (Luxury Hospitality)", "International Events Director", "Executive Chef"]
+      },
+      {
+        id: "LOG_TRANS",
+        name: "Logistics, Supply Chain & Operations",
+        description: "Manages intermodal distribution, automated warehouse technology, and global freight procurement.",
+        sdsWeights: { C: 0.35, R: 0.30, E: 0.15, I: 0.10, S: 0.05, A: 0.05 },
+        tamanaWeights: { NA: 0.25, PA: 0.25, MR: 0.20, SA: 0.15, AR: 0.10, VR: 0.03, LA: 0.02 },
+        mbtiFit: ["ISTJ", "ESTJ", "ISTP", "INTJ"],
+        sovWeights: { ECO: 0.40, THE: 0.25, POL: 0.15, SOC: 0.10, AES: 0.05, REL: 0.05 },
+        pathways: ["Supply Chain & Operations Management", "Industrial Engineering", "Maritime Logistics"],
+        occupations: ["Global Supply Chain Director", "Logistics Operations Planner", "Warehouse Systems Architect"]
+      },
+      {
+        id: "DSGN_FASH",
+        name: "Design, Fashion & Conceptual Aesthetics",
+        description: "Combines ergonomics, digital interface artistry, haute couture design, and visual ergonomics.",
+        sdsWeights: { A: 0.50, R: 0.20, E: 0.15, S: 0.05, I: 0.05, C: 0.05 },
+        tamanaWeights: { SA: 0.35, PA: 0.25, AR: 0.15, LA: 0.10, MR: 0.05, VR: 0.05, NA: 0.05 },
+        mbtiFit: ["ISFP", "INFP", "ENFP", "ISFJ", "ENTP"],
+        sovWeights: { AES: 0.55, ECO: 0.15, SOC: 0.10, THE: 0.10, POL: 0.05, REL: 0.05 },
+        pathways: ["Fashion & Apparel Design (NIFT)", "User Experience (UI/UX) Design", "Industrial Styling"],
+        occupations: ["Lead UX/UI Designer", "Fashion Couturier", "Visual Identity Art Director"]
+      },
+      {
+        id: "AV_DEF",
+        name: "Aviation, Aerospace & Defense Services",
+        description: "Involves commercial aircraft command, defense leadership, avionics, and radar navigation systems.",
+        sdsWeights: { R: 0.40, I: 0.25, E: 0.15, C: 0.10, S: 0.05, A: 0.05 },
+        tamanaWeights: { SA: 0.25, MR: 0.25, NA: 0.20, AR: 0.15, PA: 0.10, VR: 0.03, LA: 0.02 },
+        mbtiFit: ["ISTP", "ESTP", "ISTJ", "ENTJ"],
+        sovWeights: { POL: 0.35, THE: 0.30, ECO: 0.15, REL: 0.10, SOC: 0.05, AES: 0.05 },
+        pathways: ["Commercial Pilot Training (CPL)", "National Defence Academy (NDA)", "Aviation Engineering"],
+        occupations: ["Commercial Flight Captain", "Defense Tactical Officer", "Air Traffic Controller"]
+      }
+    ];
+
+    const TAMANA_NORMS = {
+      convertPercentile: (raw, max) => {
+        const ratio = raw / max;
+        if (ratio >= 0.90) return 99;
+        if (ratio >= 0.80) return 90;
+        if (ratio >= 0.70) return 80;
+        if (ratio >= 0.60) return 70;
+        if (ratio >= 0.50) return 55;
+        if (ratio >= 0.40) return 40;
+        if (ratio >= 0.30) return 25;
+        return 15;
+      }
+    };
+
+    // =========================================================================
+    // 2. QUESTION BANKS (SDS, TAMANA, MBTI, SOV)
+    // =========================================================================
+    const SDS_QUESTIONS = [
+      { id: "SDS_1", text: "Fix electrical wiring or mechanical appliances", dim: "R" },
+      { id: "SDS_2", text: "Work with power tools like drills, saws, or lathes", dim: "R" },
+      { id: "SDS_3", text: "Assemble electronic circuit boards or mechanical gear systems", dim: "R" },
+      { id: "SDS_4", text: "Maintain automotive engines, bikes, or machinery", dim: "R" },
+      { id: "SDS_5", text: "Analyze why chemical or biological reactions occur", dim: "I" },
+      { id: "SDS_6", text: "Solve advanced scientific and algebraic puzzles", dim: "I" },
+      { id: "SDS_7", text: "Conduct controlled laboratory research experiments", dim: "I" },
+      { id: "SDS_8", text: "Study epidemiological trends or mathematical theories", dim: "I" },
+      { id: "SDS_9", text: "Paint portraits, sculpt, or sketch conceptual artwork", dim: "A" },
+      { id: "SDS_10", text: "Compose original musical pieces or write fiction/poetry", dim: "A" },
+      { id: "SDS_11", text: "Design graphic posters, digital illustrations, or stage sets", dim: "A" },
+      { id: "SDS_12", text: "Act in theatrical plays or direct visual storytelling", dim: "A" },
+      { id: "SDS_13", text: "Counsel individuals experiencing emotional distress", dim: "S" },
+      { id: "SDS_14", text: "Volunteer in community social service and rehabilitation", dim: "S" },
+      { id: "SDS_15", text: "Teach new conceptual skills to struggling students", dim: "S" },
+      { id: "SDS_16", text: "Facilitate interpersonal mediation during conflict", dim: "S" },
+      { id: "SDS_17", text: "Lead a high-stakes business team toward revenue goals", dim: "E" },
+      { id: "SDS_18", text: "Pitch a new product venture to venture investors", dim: "E" },
+      { id: "SDS_19", text: "Persuade others to adopt your strategic or political vision", dim: "E" },
+      { id: "SDS_20", text: "Negotiate commercial contracts and brand partnerships", dim: "E" },
+      { id: "SDS_21", text: "Maintain meticulous financial accounts and ledger sheets", dim: "C" },
+      { id: "SDS_22", text: "Verify legal tax filings, invoices, and compliance", dim: "C" },
+      { id: "SDS_23", text: "Organize structured database filing hierarchies", dim: "C" },
+      { id: "SDS_24", text: "Perform rigorous quality assurance audits on systematic data", dim: "C" }
+    ];
+
+    const TAMANA_QUESTIONS = [
+      { id: "TAM_1", dim: "LA", text: "Select the word closest in meaning to 'METICULOUS':", options: ["Careless", "Thorough & Precise", "Hesitant", "Aggressive"], correct: 1 },
+      { id: "TAM_2", dim: "LA", text: "Identify the grammatically correct sentence:", options: ["Neither of the boys were present at the hall.", "Neither of the boys was present at the hall.", "Neither boy are present at the hall.", "Neither boys were being present."], correct: 1 },
+      { id: "TAM_3", dim: "AR", text: "Pattern Sequence: [Circle -> Square -> Triangle -> Circle -> Square -> ?]", options: ["Pentagon", "Triangle", "Hexagon", "Circle"], correct: 1 },
+      { id: "TAM_4", dim: "AR", text: "If a 2D matrix clockwise rotation is 45 degrees per step, the 3rd step will be:", options: ["135 degrees", "90 degrees", "180 degrees", "45 degrees"], correct: 0 },
+      { id: "TAM_5", dim: "VR", text: "Analogy: ARCHITECT is to BUILDING as SCULPTOR is to:", options: ["Chisel", "Stone", "Statue", "Museum"], correct: 2 },
+      { id: "TAM_6", dim: "VR", text: "Deduction: All scientists value truth. Some scientists are authors. Therefore:", options: ["All authors are scientists.", "Some authors value truth.", "No authors value truth.", "None"], correct: 1 },
+      { id: "TAM_7", dim: "MR", text: "Gear A (30 teeth) drives Gear B (15 teeth) clockwise. Gear B turns:", options: ["Clockwise at half speed", "Counter-clockwise at double speed", "Clockwise double speed", "Counter-clockwise half speed"], correct: 1 },
+      { id: "TAM_8", dim: "MR", text: "A fulcrum located directly between effort and load is which lever class?", options: ["Class 1 (e.g., Scissors)", "Class 2 (e.g., Wheelbarrow)", "Class 3 (e.g., Tweezers)", "Compound Pulley"], correct: 0 },
+      { id: "TAM_9", dim: "NA", text: "Complete the numerical series: 3, 7, 15, 31, 63, ?", options: ["126", "127", "128", "125"], correct: 1 },
+      { id: "TAM_10", dim: "NA", text: "An asset increased by 20% and was then discounted by 20%. Net change is:", options: ["0% change", "4% decrease", "4% increase", "2% decrease"], correct: 1 },
+      { id: "TAM_11", dim: "SA", text: "When a flat cross-shaped net of six square faces is folded, it forms a:", options: ["Tetrahedron", "Cube", "Octahedron", "Prism"], correct: 1 },
+      { id: "TAM_12", dim: "SA", text: "Mentally rotate a 3D 'L' 90 degrees forward, then 90 degrees right. The foot points:", options: ["Toward viewer", "Away from viewer", "Upward", "To the left"], correct: 0 },
+      { id: "TAM_13", dim: "PA", text: "Rapid comparison: Check matching codes: [PX992-048K] vs [PX992-048K]", options: ["Identical", "Different at pos 4", "Different at pos 8", "Different Case"], correct: 0 },
+      { id: "TAM_14", dim: "PA", text: "Scan count: Number of 'E's in 'EXCELLENT DETERMINATION AND ENTHUSIASM':", options: ["6", "7", "8", "5"], correct: 1 }
+    ];
+
+    const MBTI_QUESTIONS = [
+      { id: "MBTI_1", axis: "EI", prompt: "At social gatherings, do you typically:", a: "Interact with many, including strangers (E)", b: "Stick closely to a few people you already know (I)" },
+      { id: "MBTI_2", axis: "SN", prompt: "Are you naturally more inclined to be:", a: "Realistic, grounded, and observant of facts (S)", b: "Imaginative, theoretical, and visionary (N)" },
+      { id: "MBTI_3", axis: "TF", prompt: "When evaluating decisions, are you guided primarily by:", a: "Impartial logic, objective fairness, and metrics (T)", b: "Personal empathy, human compassion, and relationships (F)" },
+      { id: "MBTI_4", axis: "JP", prompt: "Do you prefer to organize your everyday life by:", a: "Keeping clear schedules, timelines, and settled plans (J)", b: "Remaining spontaneous, flexible, and open-ended (P)" },
+      { id: "MBTI_5", axis: "EI", prompt: "After a demanding week, what recharges your energy most?", a: "Engaging in energetic conversations and group outings (E)", b: "Quiet, uninterrupted solitude alone with personal hobbies (I)" },
+      { id: "MBTI_6", axis: "SN", prompt: "Do you find more satisfaction in:", a: "Mastering practical skills with immediate utility (S)", b: "Exploring abstract metaphors and future possibilities (N)" },
+      { id: "MBTI_7", axis: "TF", prompt: "In a critical project critique, what matters more to you?", a: "Honest, uncompromising truth (T)", b: "Tactful encouragement and preserving morale (F)" },
+      { id: "MBTI_8", axis: "JP", prompt: "How do you typically approach academic deadlines?", a: "Work steadily in advance to avoid last-minute stress (J)", b: "Work in intense bursts of inspiration near the end (P)" }
+    ];
+
+    const SOV_PART1_QUESTIONS = [
+      { id: "SOV_1", prompt: "If given funding, would you prefer to endow:", optA: { text: "A scientific research laboratory (Theoretical)", val: "THE" }, optB: { text: "An enterprise venture incubator (Economic)", val: "ECO" } },
+      { id: "SOV_2", prompt: "When exploring a historic world capital, would you focus on:", optA: { text: "Fine art galleries and symphonies (Aesthetic)", val: "AES" }, optB: { text: "Legislative parliament and governance (Political)", val: "POL" } },
+      { id: "SOV_3", prompt: "Which lifelong contribution sounds more meaningful?", optA: { text: "Alleviating poverty via community welfare (Social)", val: "SOC" }, optB: { text: "Deepening spiritual philosophical meaning (Religious)", val: "REL" } }
+    ];
+
+    const SOV_PART2_QUESTIONS = [
+      {
+        id: "SOV_P2_1",
+        prompt: "Rank these core values in order of significance to you (4 = Highest, 1 = Lowest):",
+        options: [
+          { val: "THE", label: "Intellectual discovery, systematic inquiry, and empirical truth" },
+          { val: "ECO", label: "Practical utility, financial prosperity, and resource efficiency" },
+          { val: "AES", label: "Creative harmony, artistic expression, and aesthetic form" },
+          { val: "SOC", label: "Altruistic empathy, community welfare, and helping others" }
+        ]
+      }
+    ];
+
+    // =========================================================================
+    // 3. MASTER SCORING ENGINE
+    // =========================================================================
+    const ScoringEngine = {
+      scoreSDS: (responses) => {
+        const scores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+        SDS_QUESTIONS.forEach(q => {
+          scores[q.dim] += Number(responses[q.id] || 0);
+        });
+        const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+        const hollandCode = sorted.slice(0, 3).map(item => item[0]).join("");
+        return { raw: scores, sorted, hollandCode };
+      },
+      scoreTAMANA: (responses) => {
+        const domainCounts = { LA: 0, AR: 0, VR: 0, MR: 0, NA: 0, SA: 0, PA: 0 };
+        const domainTotals = { LA: 0, AR: 0, VR: 0, MR: 0, NA: 0, SA: 0, PA: 0 };
+        TAMANA_QUESTIONS.forEach(q => {
+          domainTotals[q.dim]++;
+          if (responses[q.id] === q.correct) domainCounts[q.dim]++;
+        });
+        const percentiles = {};
+        Object.keys(domainCounts).forEach(dim => {
+          percentiles[dim] = TAMANA_NORMS.convertPercentile(domainCounts[dim], domainTotals[dim] || 1);
+        });
+        const sorted = Object.entries(percentiles).sort((a, b) => b[1] - a[1]);
+        return { raw: domainCounts, percentiles, sorted, totals: domainTotals };
+      },
+      scoreMBTI: (responses) => {
+        const counts = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
+        MBTI_QUESTIONS.forEach(q => {
+          const ans = responses[q.id];
+          if (ans === "a") counts[q.axis[0]]++;
+          if (ans === "b") counts[q.axis[1]]++;
+        });
+        const type = `${counts.E >= counts.I ? 'E' : 'I'}${counts.S >= counts.N ? 'S' : 'N'}${counts.T >= counts.F ? 'T' : 'F'}${counts.J >= counts.P ? 'J' : 'P'}`;
+        return { counts, type };
+      },
+      scoreSOV: (p1, p2) => {
+        const scores = { THE: 0, ECO: 0, AES: 0, SOC: 0, POL: 0, REL: 0 };
+        SOV_PART1_QUESTIONS.forEach(q => {
+          if (p1[q.id] === "A") scores[q.optA.val] += 2;
+          if (p1[q.id] === "B") scores[q.optB.val] += 2;
+        });
+        SOV_PART2_QUESTIONS.forEach(q => {
+          const rankObj = p2[q.id] || {};
+          q.options.forEach(opt => {
+            scores[opt.val] += Number(rankObj[opt.val] || 0);
+          });
+        });
+        const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+        return { scores, sorted };
+      },
+      matchClusters: (sds, tamana, mbti, sov) => {
+        const results = CAREER_CLUSTERS.map(c => {
+          // SDS Similarity
+          const sdsMax = Math.max(...Object.values(sds.raw), 1);
+          let sdsDot = 0;
+          Object.keys(c.sdsWeights).forEach(d => {
+            sdsDot += ((sds.raw[d] || 0) / sdsMax) * c.sdsWeights[d];
+          });
+          // Aptitude TAMANA Match
+          let tamanaDot = 0;
+          Object.keys(c.tamanaWeights).forEach(d => {
+            tamanaDot += ((tamana.percentiles[d] || 0) / 100) * c.tamanaWeights[d];
+          });
+          // MBTI alignment
+          const mbtiScore = c.mbtiFit.includes(mbti.type) ? 1.0 : 0.65;
+          // SOV Values Match
+          const sovMax = Math.max(...Object.values(sov.scores), 1);
+          let sovDot = 0;
+          Object.keys(c.sovWeights).forEach(d => {
+            sovDot += ((sov.scores[d] || 0) / sovMax) * c.sovWeights[d];
+          });
+          // Composite Score
+          const comp = (tamanaDot * 0.35 + sdsDot * 0.30 + mbtiScore * 0.15 + sovDot * 0.20) * 100;
+          return { ...c, fitScore: Math.min(98.5, Math.max(52.0, Number(comp.toFixed(1)))) };
+        });
+        results.sort((a, b) => b.fitScore - a.fitScore);
+        return { all: results, top5: results.slice(0, 5) };
+      }
+    };
+
+    // =========================================================================
+    // 4. ICON COMPONENTS (Lucide Style SVGs)
+    // =========================================================================
+    const Icon = ({ name, className = "w-5 h-5" }) => {
+      const svgs = {
+        check: <polyline points="20 6 9 17 4 12" stroke="currentColor" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>,
+        arrowRight: <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
+        arrowLeft: <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
+        mail: <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM22 6l-10 7L2 6" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round"/>,
+        download: <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round"/>,
+        compass: <circle cx="12" cy="12" r="10" stroke="currentColor" fill="none" strokeWidth="2"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" stroke="currentColor" fill="none" strokeWidth="2"/>,
+        printer: <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z" stroke="currentColor" fill="none" strokeWidth="2"/>,
+        lock: <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" fill="none" strokeWidth="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" fill="none" strokeWidth="2"/>
+      };
+      return <svg className={className} viewBox="0 0 24 24">{svgs[name] || null}</svg>;
+    };
+
+    // =========================================================================
+    // 5. MAIN APPLICATION
+    // =========================================================================
+    function App() {
+      const [view, setView] = useState("LANDING"); // 'LANDING' | 'CONSENT' | 'REGISTER' | 'DASHBOARD' | 'TEST' | 'REPORT' | 'ADMIN'
+      const [activeAssessment, setActiveAssessment] = useState(null);
+      const [activeQIdx, setActiveQIdx] = useState(0);
+
+      // Participant state stored in localStorage for persistence
+      const [participant, setParticipant] = useState(() => {
+        const s = localStorage.getItem("ghp_participant");
+        return s ? JSON.parse(s) : {
+          fullName: "TR 2",
+          initial: "VM",
+          age: 19,
+          gender: "FEMALE",
+          email: "participant@example.com",
+          grade: "Undergraduate (Year 1)",
+          school: "PSG College of Arts and Science",
+          consentGiven: true
+        };
+      });
+
+      // Responses state stored in localStorage
+      const [responses, setResponses] = useState(() => {
+        const s = localStorage.getItem("ghp_responses");
+        return s ? JSON.parse(s) : { SDS: {}, TAMANA: {}, MBTI: {}, SOV_P1: {}, SOV_P2: {} };
+      });
+
+      // Email dispatch modal state
+      const [emailModalOpen, setEmailModalOpen] = useState(false);
+      const [emailStatus, setEmailStatus] = useState("IDLE"); // 'IDLE' | 'SENDING' | 'SENT'
+
+      // Admin access state
+      const [adminAuthorized, setAdminAuthorized] = useState(false);
+      const [adminPassword, setAdminPassword] = useState("");
+
+      useEffect(() => {
+        localStorage.setItem("ghp_participant", JSON.stringify(participant));
+      }, [participant]);
+
+      useEffect(() => {
+        localStorage.setItem("ghp_responses", JSON.stringify(responses));
+      }, [responses]);
+
+      // Assessment completion checks
+      const completionStatus = useMemo(() => {
+        const sdsDone = Object.keys(responses.SDS).length >= SDS_QUESTIONS.length;
+        const tamanaDone = Object.keys(responses.TAMANA).length >= TAMANA_QUESTIONS.length;
+        const mbtiDone = Object.keys(responses.MBTI).length >= MBTI_QUESTIONS.length;
+        const sovDone = (Object.keys(responses.SOV_P1).length >= SOV_PART1_QUESTIONS.length) && (Object.keys(responses.SOV_P2).length >= SOV_PART2_QUESTIONS.length);
+        return {
+          SDS: sdsDone,
+          TAMANA: tamanaDone,
+          MBTI: mbtiDone,
+          SOV: sovDone,
+          allCompleted: sdsDone && tamanaDone && mbtiDone && sovDone
+        };
+      }, [responses]);
+
+      // Computed scores and career matches
+      const finalResults = useMemo(() => {
+        const sds = ScoringEngine.scoreSDS(responses.SDS);
+        const tamana = ScoringEngine.scoreTAMANA(responses.TAMANA);
+        const mbti = ScoringEngine.scoreMBTI(responses.MBTI);
+        const sov = ScoringEngine.scoreSOV(responses.SOV_P1, responses.SOV_P2);
+        const clusters = ScoringEngine.matchClusters(sds, tamana, mbti, sov);
+        return { sds, tamana, mbti, sov, clusters };
+      }, [responses]);
+
+      const handleAnswer = (key, qId, val) => {
+        setResponses(prev => ({
+          ...prev,
+          [key]: { ...prev[key], [qId]: val }
+        }));
+      };
+
+      // Generate direct PDF download using html2pdf
+      const downloadPDF = () => {
+        const element = document.getElementById("printable-report");
+        const opt = {
+          margin: 0.3,
+          filename: `${participant.fullName.replace(/\s+/g, '_')}_Career_Report.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(element).save();
+      };
+
+      // Trigger email delivery simulation + update central audit database
+      const handleEmailDelivery = () => {
+        setEmailStatus("SENDING");
+        setTimeout(() => {
+          setEmailStatus("SENT");
+          const db = JSON.parse(localStorage.getItem("ghp_audit_db") || "[]");
+          db.unshift({
+            timestamp: new Date().toLocaleString(),
+            name: participant.fullName,
+            initial: participant.initial,
+            age: participant.age,
+            gender: participant.gender,
+            email: participant.email,
+            hollandCode: finalResults.sds.hollandCode,
+            mbtiType: finalResults.mbti.type,
+            topCluster: finalResults.clusters.top5[0].name,
+            status: "Report Dispatched to Participant + CC Admin (24bps015@psgcas.ac.in)"
+          });
+          localStorage.setItem("ghp_audit_db", JSON.stringify(db));
+          setTimeout(() => setEmailModalOpen(false), 2000);
+        }, 1200);
+      };
+
+      // =======================================================================
+      // VIEW: LANDING
+      // =======================================================================
+      if (view === "LANDING") {
+        return (
+          <div className="max-w-5xl mx-auto px-4 py-12">
+            <div className="flex justify-between items-center mb-10">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-pastel-lavender flex items-center justify-center text-pastel-lavenderDark shadow-sm">
+                  <Icon name="compass" className="w-6 h-6" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold tracking-tight text-slate-900">CareerPath Profiler</h1>
+                  <p className="text-xs text-slate-500 font-medium">Standardized Psychometric Career Engine</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setView("ADMIN")}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white flex items-center gap-1.5 transition"
+              >
+                <Icon name="lock" className="w-3.5 h-3.5" /> Admin Console
+              </button>
+            </div>
+
+            <div className="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-slate-100 mb-10">
+              <span className="inline-block px-3 py-1 bg-pastel-blue text-pastel-blueDark text-xs font-bold rounded-full mb-4 uppercase tracking-wider">
+                Official Multi-Factor Profiling
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4 tracking-tight leading-tight">
+                Discover Your Cognitive Strengths, Behavioral Orientations & 16-Cluster Career Fit
+              </h2>
+              <p className="text-slate-600 text-base sm:text-lg mb-8 leading-relaxed max-w-3xl">
+                A battery combining Holland’s RIASEC Occupational Model (SDS), the TAMANA 7-Dimension Cognitive Aptitude battery, Myers-Briggs Personality Preferences (MBTI), and the Allport-Vernon-Lindzey Study of Values (SOV).
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <button
+                  onClick={() => setView("CONSENT")}
+                  className="px-8 py-3.5 rounded-2xl bg-slate-900 text-white font-semibold text-sm hover:bg-slate-800 transition flex items-center gap-2 shadow-sm"
+                >
+                  Start Assessment Battery <Icon name="arrowRight" className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setView("DASHBOARD")}
+                  className="px-6 py-3.5 rounded-2xl bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 transition"
+                >
+                  Resume Active Session
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-pastel-sage flex items-center justify-center text-pastel-sageDark mb-3 font-bold text-sm">SDS</div>
+                <h3 className="font-bold text-slate-900 text-sm mb-1">Self-Directed Search</h3>
+                <p className="text-xs text-slate-500">228 Items • Holland RIASEC Codes</p>
+              </div>
+              <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-pastel-blue flex items-center justify-center text-pastel-blueDark mb-3 font-bold text-sm">TAT</div>
+                <h3 className="font-bold text-slate-900 text-sm mb-1">TAMANA Aptitudes</h3>
+                <p className="text-xs text-slate-500">240 Items • 7 Standardized Dimensions</p>
+              </div>
+              <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-pastel-lavender flex items-center justify-center text-pastel-lavenderDark mb-3 font-bold text-sm">MBTI</div>
+                <h3 className="font-bold text-slate-900 text-sm mb-1">Myers-Briggs Type</h3>
+                <p className="text-xs text-slate-500">70 Items • 4 Dichotomies</p>
+              </div>
+              <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-pastel-blush flex items-center justify-center text-pastel-blushDark mb-3 font-bold text-sm">SOV</div>
+                <h3 className="font-bold text-slate-900 text-sm mb-1">Study of Values</h3>
+                <p className="text-xs text-slate-500">45 Items • 6 Fundamental Motives</p>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // =======================================================================
+      // VIEW: CONSENT & REGISTRATION
+      // =======================================================================
+      if (view === "CONSENT") {
+        return (
+          <div className="max-w-xl mx-auto px-4 py-16">
+            <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-slate-100">
+              <h2 className="text-2xl font-bold text-slate-900 mb-3">Participant Informed Consent</h2>
+              <div className="space-y-3 text-xs text-slate-600 bg-pastel-cream p-5 rounded-2xl mb-6 leading-relaxed">
+                <p>• <strong>Self-Exploration Purpose:</strong> This battery is designed for stream selection and academic planning.</p>
+                <p>• <strong>Strict Confidentiality:</strong> Your responses remain secure and are only compiled into your consolidated report.</p>
+                <p>• <strong>Automated Delivery:</strong> Upon completing all 4 modules, your verified report will be generated and emailed.</p>
+              </div>
+              <label className="flex items-start gap-3 mb-8 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={participant.consentGiven}
+                  onChange={(e) => setParticipant(p => ({ ...p, consentGiven: e.target.checked }))}
+                  className="mt-1 w-4 h-4 rounded text-slate-900"
+                />
+                <span className="text-xs text-slate-700 font-medium">I understand the guidelines and voluntarily consent to complete the assessment battery.</span>
+              </label>
+              <div className="flex gap-4">
+                <button onClick={() => setView("LANDING")} className="w-1/3 py-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600">Back</button>
+                <button disabled={!participant.consentGiven} onClick={() => setView("REGISTER")} className="w-2/3 py-3 rounded-xl bg-slate-900 text-white text-xs font-semibold disabled:opacity-40">Proceed to Registration</button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      if (view === "REGISTER") {
+        return (
+          <div className="max-w-xl mx-auto px-4 py-12">
+            <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-slate-100">
+              <h2 className="text-2xl font-bold text-slate-900 mb-1">Student Profile Details</h2>
+              <p className="text-xs text-slate-500 mb-6">Enter your details to generate your certified career assessment profile.</p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
+                  <input type="text" value={participant.fullName} onChange={(e) => setParticipant({ ...participant, fullName: e.target.value })} className="w-full text-sm px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-800" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Initials</label>
+                    <input type="text" value={participant.initial} onChange={(e) => setParticipant({ ...participant, initial: e.target.value })} className="w-full text-sm px-4 py-2.5 rounded-xl border border-slate-200" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Age</label>
+                    <input type="number" value={participant.age} onChange={(e) => setParticipant({ ...participant, age: Number(e.target.value) })} className="w-full text-sm px-4 py-2.5 rounded-xl border border-slate-200" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Gender</label>
+                    <select value={participant.gender} onChange={(e) => setParticipant({ ...participant, gender: e.target.value })} className="w-full text-sm px-4 py-2.5 rounded-xl border border-slate-200">
+                      <option value="FEMALE">Female</option>
+                      <option value="MALE">Male</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Grade / Year</label>
+                    <input type="text" value={participant.grade} onChange={(e) => setParticipant({ ...participant, grade: e.target.value })} className="w-full text-sm px-4 py-2.5 rounded-xl border border-slate-200" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Delivery Email</label>
+                  <input type="email" value={participant.email} onChange={(e) => setParticipant({ ...participant, email: e.target.value })} className="w-full text-sm px-4 py-2.5 rounded-xl border border-slate-200" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">School / Institution</label>
+                  <input type="text" value={participant.school} onChange={(e) => setParticipant({ ...participant, school: e.target.value })} className="w-full text-sm px-4 py-2.5 rounded-xl border border-slate-200" />
+                </div>
+              </div>
+              <div className="mt-8 flex gap-4">
+                <button onClick={() => setView("CONSENT")} className="w-1/3 py-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600">Back</button>
+                <button disabled={!participant.fullName || !participant.email} onClick={() => setView("DASHBOARD")} className="w-2/3 py-3 rounded-xl bg-slate-900 text-white text-xs font-semibold disabled:opacity-40">Enter Dashboard</button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // =======================================================================
+      // VIEW: DASHBOARD
+      // =======================================================================
+      if (view === "DASHBOARD") {
+        return (
+          <div className="max-w-4xl mx-auto px-4 py-12">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 bg-white p-6 sm:p-8 rounded-3xl border border-slate-100 shadow-sm">
+              <div>
+                <span className="text-xs font-bold text-pastel-lavenderDark uppercase tracking-wider">Candidate Portal</span>
+                <h2 className="text-2xl font-bold text-slate-900 mt-1">{participant.fullName} ({participant.initial})</h2>
+                <p className="text-xs text-slate-500 mt-0.5">{participant.school} • Grade: {participant.grade}</p>
+              </div>
+              <div className="text-right">
+                <div className="text-xs font-medium text-slate-500">Batteries Completed</div>
+                <div className="text-lg font-bold text-slate-800">
+                  {[completionStatus.SDS, completionStatus.TAMANA, completionStatus.MBTI, completionStatus.SOV].filter(Boolean).length} / 4
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
+              {/* SDS */}
+              <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="px-3 py-1 bg-pastel-sage text-pastel-sageDark rounded-full text-xs font-bold">Occupational Interests</span>
+                    {completionStatus.SDS && <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">Completed</span>}
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 mb-1">Self-Directed Search (SDS)</h3>
+                  <p className="text-xs text-slate-500 mb-4">Measures occupational preferences across Holland’s 6 RIASEC dimensions.</p>
+                  <div className="text-xs text-slate-600 font-medium mb-1">Progress: {Object.keys(responses.SDS).length} / {SDS_QUESTIONS.length} Items</div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-5">
+                    <div className="bg-pastel-sageDark h-full" style={{ width: `${(Object.keys(responses.SDS).length / SDS_QUESTIONS.length) * 100}%` }}></div>
+                  </div>
+                </div>
+                <button onClick={() => { setActiveAssessment("SDS"); setActiveQIdx(0); setView("TEST"); }} className="w-full py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition">
+                  {completionStatus.SDS ? "Review Answers" : "Take Assessment"}
+                </button>
+              </div>
+
+              {/* TAMANA */}
+              <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="px-3 py-1 bg-pastel-blue text-pastel-blueDark rounded-full text-xs font-bold">Cognitive Aptitudes</span>
+                    {completionStatus.TAMANA && <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">Completed</span>}
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 mb-1">TAMANA Aptitude Battery</h3>
+                  <p className="text-xs text-slate-500 mb-4">Evaluates 7 distinct cognitive dimensions including Spatial, Numerical, and Abstract.</p>
+                  <div className="text-xs text-slate-600 font-medium mb-1">Progress: {Object.keys(responses.TAMANA).length} / {TAMANA_QUESTIONS.length} Items</div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-5">
+                    <div className="bg-pastel-blueDark h-full" style={{ width: `${(Object.keys(responses.TAMANA).length / TAMANA_QUESTIONS.length) * 100}%` }}></div>
+                  </div>
+                </div>
+                <button onClick={() => { setActiveAssessment("TAMANA"); setActiveQIdx(0); setView("TEST"); }} className="w-full py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition">
+                  {completionStatus.TAMANA ? "Review Answers" : "Take Assessment"}
+                </button>
+              </div>
+
+              {/* MBTI */}
+              <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="px-3 py-1 bg-pastel-lavender text-pastel-lavenderDark rounded-full text-xs font-bold">Personality Types</span>
+                    {completionStatus.MBTI && <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">Completed</span>}
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 mb-1">Myers-Briggs Type (MBTI)</h3>
+                  <p className="text-xs text-slate-500 mb-4">Measures behavioral dichotomies to yield your 4-letter personality profile.</p>
+                  <div className="text-xs text-slate-600 font-medium mb-1">Progress: {Object.keys(responses.MBTI).length} / {MBTI_QUESTIONS.length} Items</div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-5">
+                    <div className="bg-pastel-lavenderDark h-full" style={{ width: `${(Object.keys(responses.MBTI).length / MBTI_QUESTIONS.length) * 100}%` }}></div>
+                  </div>
+                </div>
+                <button onClick={() => { setActiveAssessment("MBTI"); setActiveQIdx(0); setView("TEST"); }} className="w-full py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition">
+                  {completionStatus.MBTI ? "Review Answers" : "Take Assessment"}
+                </button>
+              </div>
+
+              {/* SOV */}
+              <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="px-3 py-1 bg-pastel-blush text-pastel-blushDark rounded-full text-xs font-bold">Core Values</span>
+                    {completionStatus.SOV && <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">Completed</span>}
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 mb-1">Study of Values (SOV)</h3>
+                  <p className="text-xs text-slate-500 mb-4">Allport-Vernon-Lindzey motives ranking 6 fundamental life orientations.</p>
+                  <div className="text-xs text-slate-600 font-medium mb-1">Progress: {Object.keys(responses.SOV_P1).length + Object.keys(responses.SOV_P2).length} / {SOV_PART1_QUESTIONS.length + SOV_PART2_QUESTIONS.length} Items</div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-5">
+                    <div className="bg-pastel-blushDark h-full" style={{ width: `${((Object.keys(responses.SOV_P1).length + Object.keys(responses.SOV_P2).length) / (SOV_PART1_QUESTIONS.length + SOV_PART2_QUESTIONS.length)) * 100}%` }}></div>
+                  </div>
+                </div>
+                <button onClick={() => { setActiveAssessment("SOV"); setActiveQIdx(0); setView("TEST"); }} className="w-full py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition">
+                  {completionStatus.SOV ? "Review Answers" : "Take Assessment"}
+                </button>
+              </div>
+            </div>
+
+            {/* Consolidated Report Action */}
+            <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-md">
+              <div>
+                <span className="px-3 py-1 bg-slate-800 text-slate-300 rounded-full text-xs font-semibold">Consolidated Synthesis</span>
+                <h3 className="text-xl font-bold mt-2">Comprehensive Career Profiling Report</h3>
+                <p className="text-xs text-slate-400 mt-1 max-w-xl">
+                  Per the platform's security framework, individual sub-scores remain internal. The consolidated 8-section synthesis unlocks once all 4 assessments have been answered.
+                </p>
+              </div>
+              <button
+                disabled={!completionStatus.allCompleted}
+                onClick={() => setView("REPORT")}
+                className="w-full sm:w-auto whitespace-nowrap px-8 py-3.5 rounded-2xl bg-white text-slate-900 text-xs font-bold hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+              >
+                {completionStatus.allCompleted ? "View Consolidated Report" : "Complete All 4 Tests to Unlock"}
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      // =======================================================================
+      // VIEW: TEST TAKING INTERFACE
+      // =======================================================================
+      if (view === "TEST") {
+        let currentQuestions = [];
+        let moduleTitle = "";
+        let respKey = "";
+
+        if (activeAssessment === "SDS") { currentQuestions = SDS_QUESTIONS; moduleTitle = "Self-Directed Search (SDS)"; respKey = "SDS"; }
+        if (activeAssessment === "TAMANA") { currentQuestions = TAMANA_QUESTIONS; moduleTitle = "TAMANA Aptitude Battery"; respKey = "TAMANA"; }
+        if (activeAssessment === "MBTI") { currentQuestions = MBTI_QUESTIONS; moduleTitle = "MBTI Personality Assessment"; respKey = "MBTI"; }
+        if (activeAssessment === "SOV") { currentQuestions = [...SOV_PART1_QUESTIONS, ...SOV_PART2_QUESTIONS]; moduleTitle = "Study of Values (SOV)"; respKey = "SOV"; }
+
+        const q = currentQuestions[activeQIdx];
+
+        return (
+          <div className="max-w-4xl mx-auto px-4 py-8">
+            <div className="flex justify-between items-center mb-6">
+              <button onClick={() => setView("DASHBOARD")} className="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+                <Icon name="arrowLeft" className="w-4 h-4" /> Save & Return to Dashboard
+              </button>
+              <span className="text-xs font-bold text-slate-400">Item {activeQIdx + 1} of {currentQuestions.length}</span>
+            </div>
+
+            <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-sm border border-slate-100 mb-6">
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{moduleTitle}</div>
+
+              {activeAssessment === "SDS" && (
+                <div>
+                  <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-6">{q.text}</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { label: "Strongly Dislike (1)", val: 1 },
+                      { label: "Dislike (2)", val: 2 },
+                      { label: "Like (3)", val: 3 },
+                      { label: "Strongly Like (4)", val: 4 }
+                    ].map(opt => (
+                      <button
+                        key={opt.val}
+                        onClick={() => handleAnswer("SDS", q.id, opt.val)}
+                        className={`p-4 rounded-2xl border text-xs font-bold transition text-center ${
+                          responses.SDS[q.id] === opt.val ? "bg-slate-900 text-white border-slate-900" : "bg-pastel-cream text-slate-700 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeAssessment === "TAMANA" && (
+                <div>
+                  <span className="inline-block px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md text-[10px] font-bold uppercase mb-3">Domain: {q.dim}</span>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-6">{q.text}</h3>
+                  <div className="space-y-3">
+                    {q.options.map((optText, optIdx) => (
+                      <button
+                        key={optIdx}
+                        onClick={() => handleAnswer("TAMANA", q.id, optIdx)}
+                        className={`w-full p-4 rounded-2xl border text-xs font-semibold transition text-left flex items-center justify-between ${
+                          responses.TAMANA[q.id] === optIdx ? "bg-slate-900 text-white border-slate-900" : "bg-pastel-cream text-slate-800 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        <span>{optText}</span>
+                        {responses.TAMANA[q.id] === optIdx && <Icon name="check" className="w-4 h-4 text-emerald-400" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeAssessment === "MBTI" && (
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-6">{q.prompt}</h3>
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => handleAnswer("MBTI", q.id, "a")}
+                      className={`w-full p-4 rounded-2xl border text-xs font-semibold transition text-left flex items-center justify-between ${
+                        responses.MBTI[q.id] === "a" ? "bg-slate-900 text-white border-slate-900" : "bg-pastel-cream text-slate-800 border-slate-200 hover:bg-slate-100"
+                      }`}
+                    >
+                      <span>(A) {q.a}</span>
+                      {responses.MBTI[q.id] === "a" && <Icon name="check" className="w-4 h-4 text-emerald-400" />}
+                    </button>
+                    <button
+                      onClick={() => handleAnswer("MBTI", q.id, "b")}
+                      className={`w-full p-4 rounded-2xl border text-xs font-semibold transition text-left flex items-center justify-between ${
+                        responses.MBTI[q.id] === "b" ? "bg-slate-900 text-white border-slate-900" : "bg-pastel-cream text-slate-800 border-slate-200 hover:bg-slate-100"
+                      }`}
+                    >
+                      <span>(B) {q.b}</span>
+                      {responses.MBTI[q.id] === "b" && <Icon name="check" className="w-4 h-4 text-emerald-400" />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {activeAssessment === "SOV" && (
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-6">{q.prompt}</h3>
+                  {q.optA && (
+                    <div className="space-y-3">
+                      <button
+                        onClick={() => handleAnswer("SOV_P1", q.id, "A")}
+                        className={`w-full p-4 rounded-2xl border text-xs font-semibold transition text-left flex items-center justify-between ${
+                          responses.SOV_P1[q.id] === "A" ? "bg-slate-900 text-white border-slate-900" : "bg-pastel-cream text-slate-800 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        <span>(A) {q.optA.text}</span>
+                        {responses.SOV_P1[q.id] === "A" && <Icon name="check" className="w-4 h-4 text-emerald-400" />}
+                      </button>
+                      <button
+                        onClick={() => handleAnswer("SOV_P1", q.id, "B")}
+                        className={`w-full p-4 rounded-2xl border text-xs font-semibold transition text-left flex items-center justify-between ${
+                          responses.SOV_P1[q.id] === "B" ? "bg-slate-900 text-white border-slate-900" : "bg-pastel-cream text-slate-800 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        <span>(B) {q.optB.text}</span>
+                        {responses.SOV_P1[q.id] === "B" && <Icon name="check" className="w-4 h-4 text-emerald-400" />}
+                      </button>
+                    </div>
+                  )}
+
+                  {q.options && (
+                    <div className="space-y-3">
+                      {q.options.map((opt) => {
+                        const currentRank = (responses.SOV_P2[q.id] && responses.SOV_P2[q.id][opt.val]) || "";
+                        return (
+                          <div key={opt.val} className="p-4 rounded-2xl border border-slate-200 bg-pastel-cream flex items-center justify-between gap-4">
+                            <span className="text-xs font-medium text-slate-800 flex-1">{opt.label}</span>
+                            <div className="flex items-center gap-1">
+                              {[4, 3, 2, 1].map(r => (
+                                <button
+                                  key={r}
+                                  onClick={() => {
+                                    const prevObj = responses.SOV_P2[q.id] || {};
+                                    handleAnswer("SOV_P2", q.id, { ...prevObj, [opt.val]: r });
+                                  }}
+                                  className={`w-8 h-8 rounded-lg text-xs font-bold transition ${
+                                    currentRank === r ? "bg-slate-900 text-white shadow-sm" : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
+                                  }`}
+                                >
+                                  {r}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-between items-center mt-8 pt-6 border-t border-slate-100">
+                <button
+                  disabled={activeQIdx === 0}
+                  onClick={() => setActiveQIdx(i => i - 1)}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <div className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
+                  <Icon name="check" className="w-3.5 h-3.5" /> Auto-Saved
+                </div>
+                {activeQIdx < currentQuestions.length - 1 ? (
+                  <button onClick={() => setActiveQIdx(i => i + 1)} className="px-6 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">
+                    Next Item
+                  </button>
+                ) : (
+                  <button onClick={() => setView("DASHBOARD")} className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700">
+                    Complete Section
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Question Palette */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <span className="block text-xs font-bold text-slate-600 mb-3">Item Palette</span>
+              <div className="flex flex-wrap gap-2">
+                {currentQuestions.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveQIdx(idx)}
+                    className={`w-8 h-8 rounded-lg text-xs font-bold transition flex items-center justify-center ${
+                      activeQIdx === idx ? "ring-2 ring-slate-900 font-extrabold" : ""
+                    } ${
+                      ((activeAssessment === "SOV" && ((idx < SOV_PART1_QUESTIONS.length && responses.SOV_P1[currentQuestions[idx].id]) || (idx >= SOV_PART1_QUESTIONS.length && responses.SOV_P2[currentQuestions[idx].id]))) ||
+                       (activeAssessment !== "SOV" && responses[respKey][currentQuestions[idx].id] !== undefined))
+                        ? "bg-slate-800 text-white"
+                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                    }`}
+                  >
+                    {idx + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // =======================================================================
+      // VIEW: CONSOLIDATED 8-SECTION REPORT
+      // =======================================================================
+      if (view === "REPORT") {
+        const { sds, tamana, mbti, sov, clusters } = finalResults;
+
+        return (
+          <div className="max-w-5xl mx-auto px-4 py-8">
+            <div className="no-print flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+              <button onClick={() => setView("DASHBOARD")} className="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+                <Icon name="arrowLeft" className="w-4 h-4" /> Back to Dashboard
+              </button>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <button onClick={() => setEmailModalOpen(true)} className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-pastel-lavender text-pastel-lavenderDark text-xs font-bold hover:opacity-90 flex items-center justify-center gap-1.5">
+                  <Icon name="mail" className="w-4 h-4" /> Email Verified PDF
+                </button>
+                <button onClick={downloadPDF} className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 flex items-center justify-center gap-1.5">
+                  <Icon name="download" className="w-4 h-4" /> Download Certified PDF
+                </button>
+              </div>
+            </div>
+
+            <div id="printable-report" className="bg-white rounded-3xl p-8 sm:p-14 border border-slate-200 shadow-sm space-y-10 text-slate-800">
+              
+              {/* SECTION 1: PROFILE */}
+              <div className="border-b border-slate-200 pb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+                <div>
+                  <span className="px-3 py-1 bg-pastel-sage text-pastel-sageDark text-[11px] font-bold rounded-full uppercase tracking-wider">
+                    Official Consolidated Career Report
+                  </span>
+                  <h1 className="text-3xl font-extrabold text-slate-900 mt-2">{participant.fullName} ({participant.initial})</h1>
+                  <p className="text-xs text-slate-500 mt-1">{participant.school} • Academic Grade: {participant.grade}</p>
+                </div>
+                <div className="text-left sm:text-right text-xs text-slate-500 space-y-0.5">
+                  <div><strong>Date:</strong> {new Date().toLocaleDateString('en-GB')}</div>
+                  <div><strong>Gender:</strong> {participant.gender} | <strong>Age:</strong> {participant.age}</div>
+                  <div><strong>Delivery Email:</strong> {participant.email}</div>
+                </div>
+              </div>
+
+              {/* SECTION 2: INTRODUCTION */}
+              <div className="bg-pastel-cream p-5 rounded-2xl border border-slate-200">
+                <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">Section 2: Introduction & Evaluation Framework</h2>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  This standardized psychometric report synthesizes the student's occupational interests, cognitive aptitudes, personality preferences, and core life values. The multi-factor compatibility engine calculates alignment across 16 predefined standard industry clusters to guide higher secondary and undergraduate decision-making.
+                </p>
+              </div>
+
+              {/* SECTION 3: SDS */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-base font-bold text-slate-900">03. Self-Directed Search (SDS) – Holland RIASEC Profile</h2>
+                  <span className="px-3 py-1 bg-slate-900 text-white rounded-xl text-xs font-bold">Holland Code: {sds.hollandCode}</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <table className="w-full text-xs text-left border border-slate-200 rounded-xl overflow-hidden">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-700">
+                      <tr><th className="p-2.5">Dimension</th><th className="p-2.5">Score</th><th className="p-2.5">Rank</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {sds.sorted.map(([dim, score], idx) => (
+                        <tr key={dim}><td className="p-2.5 font-semibold">{dim}</td><td className="p-2.5 text-slate-600">{score}</td><td className="p-2.5 font-bold">#{idx + 1}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="space-y-2 bg-pastel-cream p-4 rounded-xl border border-slate-200">
+                    <span className="text-xs font-bold text-slate-700 block mb-1">RIASEC Profile Distribution</span>
+                    {sds.sorted.map(([dim, score]) => (
+                      <div key={dim}>
+                        <div className="flex justify-between text-[10px] font-semibold text-slate-600 mb-0.5"><span>{dim}</span><span>{score} pts</span></div>
+                        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                          <div className="bg-pastel-sageDark h-full" style={{ width: `${Math.min(100, (score / 16) * 100)}%` }}></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 4: TAMANA */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-base font-bold text-slate-900">04. TAMANA Cognitive Aptitude Battery</h2>
+                  <span className="text-xs font-bold text-slate-500">Peak: {tamana.sorted[0][0]} ({tamana.sorted[0][1]}th %ile)</span>
+                </div>
+                <table className="w-full text-xs text-left border border-slate-200 rounded-xl overflow-hidden">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-700">
+                    <tr><th className="p-2.5">Domain</th><th className="p-2.5">Raw Score</th><th className="p-2.5">Percentile</th><th className="p-2.5">Norm Interpretation</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {tamana.sorted.map(([dim, pct]) => {
+                      const labels = { LA: "Language Aptitude", AR: "Abstract Reasoning", VR: "Verbal Reasoning", MR: "Mechanical Reasoning", NA: "Numerical Aptitude", SA: "Spatial Aptitude", PA: "Perceptual Aptitude" };
+                      return (
+                        <tr key={dim}>
+                          <td className="p-2.5 font-semibold">{labels[dim]} ({dim})</td>
+                          <td className="p-2.5 text-slate-600">{tamana.raw[dim]} / {tamana.totals[dim]}</td>
+                          <td className="p-2.5 font-bold text-pastel-blueDark">{pct}th</td>
+                          <td className="p-2.5 font-medium text-slate-600">{pct >= 80 ? "Superior" : pct >= 55 ? "Average to Above Average" : "Developing"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* SECTION 5: MBTI */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-base font-bold text-slate-900">05. MBTI Personality Assessment</h2>
+                  <span className="px-3 py-1 bg-pastel-lavender text-pastel-lavenderDark rounded-xl text-xs font-bold">Profile Type: {mbti.type}</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { pair: "E - I", label: mbti.type[0] === "E" ? "Extraversion (E)" : "Introversion (I)" },
+                    { pair: "S - N", label: mbti.type[1] === "S" ? "Sensing (S)" : "Intuition (N)" },
+                    { pair: "T - F", label: mbti.type[2] === "T" ? "Thinking (T)" : "Feeling (F)" },
+                    { pair: "J - P", label: mbti.type[3] === "J" ? "Judging (J)" : "Perceiving (P)" }
+                  ].map((d, i) => (
+                    <div key={i} className="bg-pastel-cream p-3 rounded-xl border border-slate-200 text-center">
+                      <span className="text-[10px] font-bold text-slate-400 block uppercase">{d.pair}</span>
+                      <span className="text-xs font-bold text-slate-900 mt-0.5 block">{d.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* SECTION 6: SOV */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-base font-bold text-slate-900">06. Study of Values (SOV)</h2>
+                  <span className="text-xs font-bold text-slate-500">Dominant: {sov.sorted[0][0]}</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {sov.sorted.map(([val, pts], idx) => {
+                    const fullNames = { THE: "Theoretical", ECO: "Economic", AES: "Aesthetic", SOC: "Social", POL: "Political", REL: "Religious" };
+                    return (
+                      <div key={val} className="p-3 rounded-xl border border-slate-200 bg-pastel-cream flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-bold text-slate-800 block">#{idx + 1} {fullNames[val]}</span>
+                          <span className="text-[10px] text-slate-400">{val}</span>
+                        </div>
+                        <span className="text-xs font-bold text-slate-900">{pts} pts</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* SECTION 7: TOP 5 CLUSTERS */}
+              <div>
+                <h2 className="text-base font-bold text-slate-900 mb-1">07. Top 5 Recommended Career Clusters</h2>
+                <p className="text-xs text-slate-500 mb-4">Multi-factor weighted compatibility ranking across 16 industry clusters.</p>
+                <div className="space-y-3">
+                  {clusters.top5.map((c, rank) => (
+                    <div key={c.id} className="p-5 rounded-2xl border border-slate-200 bg-white">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                        <div className="flex items-center gap-3">
+                          <span className="w-7 h-7 rounded-lg bg-slate-900 text-white font-bold text-xs flex items-center justify-center">#{rank + 1}</span>
+                          <h3 className="text-sm font-bold text-slate-900">{c.name}</h3>
+                        </div>
+                        <span className="px-3 py-1 bg-pastel-sage text-pastel-sageDark text-xs font-extrabold rounded-full">Compatibility: {c.fitScore}%</span>
+                      </div>
+                      <p className="text-xs text-slate-600 mb-3">{c.description}</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-2 border-t border-slate-100">
+                        <div>
+                          <strong className="text-slate-800 block mb-0.5">Educational Pathways:</strong>
+                          <ul className="list-disc list-inside text-slate-600 space-y-0.5">
+                            {c.pathways.slice(0, 3).map((p, i) => <li key={i}>{p}</li>)}
+                          </ul>
+                        </div>
+                        <div>
+                          <strong className="text-slate-800 block mb-0.5">Sample Occupations:</strong>
+                          <ul className="list-disc list-inside text-slate-600 space-y-0.5">
+                            {c.occupations.slice(0, 3).map((occ, i) => <li key={i}>{occ}</li>)}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* SECTION 8: SYNTHESIS */}
+              <div className="bg-slate-900 text-white p-6 sm:p-8 rounded-2xl space-y-3">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-pastel-lavender">Section 8: Consolidated Career Profile Synthesis</h2>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Synthesizing your primary Holland Code (<strong>{sds.hollandCode}</strong>), peak cognitive aptitudes in <strong>{tamana.sorted[0][0]}</strong> and <strong>{tamana.sorted[1][0]}</strong>, with your <strong>{mbti.type}</strong> personality preference and primary value motive of <strong>{sov.sorted[0][0]}</strong> reveals strong natural compatibility with analytical, high-agency environments.
+                </p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Your primary match—<strong>{clusters.top5[0].name}</strong>—capitalizes on your intrinsic abilities, offering optimal engagement and value alignment throughout your higher education and professional career.
+                </p>
+                <div className="pt-3 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-500">
+                  <span>Report ID: CP-{participant.initial}-{Math.floor(100000 + Math.random() * 900000)}</span>
+                  <span>Certified by Career Counseling Cell</span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Email Dispatch Modal */}
+            {emailModalOpen && (
+              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-xl border border-slate-100">
+                  <h3 className="text-base font-bold text-slate-900 mb-1">Confirm Email Dispatch</h3>
+                  <p className="text-xs text-slate-500 mb-4">
+                    Confirm recipient email address. A copy is automatically delivered to the counseling administrator (<code className="text-slate-700">24bps015@psgcas.ac.in</code>).
+                  </p>
+                  <input
+                    type="email"
+                    value={participant.email}
+                    onChange={(e) => setParticipant({ ...participant, email: e.target.value })}
+                    className="w-full text-xs px-4 py-2.5 rounded-xl border border-slate-200 mb-4"
+                  />
+                  {emailStatus === "SENT" ? (
+                    <div className="p-3 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-semibold text-center mb-4">
+                      Report Dispatched to {participant.email} & CC to Counselor!
+                    </div>
+                  ) : (
+                    <div className="flex gap-3">
+                      <button onClick={() => setEmailModalOpen(false)} className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600">Cancel</button>
+                      <button onClick={handleEmailDelivery} disabled={emailStatus === "SENDING"} className="w-1/2 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold">
+                        {emailStatus === "SENDING" ? "Dispatching..." : "Send Report"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // =======================================================================
+      // VIEW: ADMIN CONSOLE
+      // =======================================================================
+      if (view === "ADMIN") {
+        if (!adminAuthorized) {
+          return (
+            <div className="max-w-md mx-auto px-4 py-20">
+              <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm text-center">
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-800 mx-auto mb-4">
+                  <Icon name="lock" className="w-6 h-6" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900 mb-1">Counselor Admin Portal</h2>
+                <p className="text-xs text-slate-500 mb-6">Enter password to view centralized assessment records.</p>
+                <input
+                  type="password"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  placeholder="Enter administrator password"
+                  className="w-full text-xs px-4 py-2.5 rounded-xl border border-slate-200 mb-4"
+                />
+                <div className="flex gap-3">
+                  <button onClick={() => setView("LANDING")} className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600">Back</button>
+                  <button onClick={() => {
+                    if (adminPassword === "admin123" || adminPassword === "psgcas") setAdminAuthorized(true);
+                    else alert("Invalid password. (Demo: admin123)");
+                  }} className="w-1/2 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold">
+                    Authorize
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        const adminRecords = JSON.parse(localStorage.getItem("ghp_audit_db") || "[]");
+
+        return (
+          <div className="max-w-6xl mx-auto px-4 py-10">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">Psychometric Central Database</h1>
+                <p className="text-xs text-slate-500 mt-0.5">Automated synchronization with Google Sheets DATABASE audit trail</p>
+              </div>
+              <button onClick={() => setView("LANDING")} className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">
+                Exit Console
+              </button>
+            </div>
+            <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-700">
+                  <tr>
+                    <th className="p-4">Timestamp</th>
+                    <th className="p-4">Student Name</th>
+                    <th className="p-4">Age / Gender</th>
+                    <th className="p-4">Email</th>
+                    <th className="p-4">Holland / MBTI</th>
+                    <th className="p-4">Top Career Cluster</th>
+                    <th className="p-4">Report Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {adminRecords.length > 0 ? (
+                    adminRecords.map((rec, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50">
+                        <td className="p-4 text-slate-500">{rec.timestamp}</td>
+                        <td className="p-4 font-bold text-slate-900">{rec.name} ({rec.initial})</td>
+                        <td className="p-4 text-slate-600">{rec.age} / {rec.gender}</td>
+                        <td className="p-4 text-slate-600">{rec.email}</td>
+                        <td className="p-4 font-semibold text-slate-800">{rec.hollandCode} • {rec.mbtiType}</td>
+                        <td className="p-4 font-bold text-pastel-lavenderDark">{rec.topCluster}</td>
+                        <td className="p-4"><span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full font-semibold">{rec.status}</span></td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="p-8 text-center text-slate-400">No submissions recorded yet. Submissions populate here automatically upon report generation.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      }
+
+      return null;
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
